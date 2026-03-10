@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hành Trình Tư Vấn Viên</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0b0e1a;
+  --card-bg: #1c2038;
+  --card-border: #2a3158;
+  --accent: #c8a96e;
+  --accent2: #7eb8f7;
+  --text: #e4e8f5;
+  --muted: #7a84a0;
+  --good-glow: #22c55e;
+  --bad-glow: #ef4444;
+  --gold: #f0c060;
+  --font: 'Montserrat', Arial, sans-serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--font); background: var(--bg); color: var(--text); min-height: 100vh; overflow-x: hidden; font-size: 15px; }
+#bg-canvas { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+#app { position: relative; z-index: 1; display: flex; flex-direction: column; min-height: 100vh; }
+
+header { text-align: center; padding: 22px 20px 12px; max-width: 700px; margin: 0 auto; width: 100%; }
+header h1 { font-size: clamp(1.4rem,3.5vw,2.1rem); font-weight: 900; color: var(--accent); letter-spacing: 0.5px; line-height: 1.2; }
+.subtitle { color: var(--muted); font-size: clamp(0.78rem,1.8vw,0.9rem); margin-top: 8px; line-height: 1.65; font-weight: 500; }
+.subtitle .warn { color: #f0a060; font-weight: 600; }
+
+#hud { max-width: 560px; margin: 10px auto 0; padding: 0 16px; width: 100%; }
+.hud-row { display: flex; justify-content: space-between; align-items: center; font-size: 0.82rem; color: var(--muted); margin-bottom: 6px; font-weight: 600; }
+.hud-row strong { color: var(--accent); font-size: 1rem; font-weight: 800; }
+#energy-track { height: 11px; background: #1c2038; border-radius: 99px; overflow: hidden; border: 1px solid #2a3158; }
+#energy-fill { height: 100%; width: 0%; border-radius: 99px; background: linear-gradient(90deg,#22c55e,#7eb8f7); transition: width .55s cubic-bezier(.4,0,.2,1), background .4s; position: relative; }
+#energy-fill::after { content: ''; position: absolute; top: 2px; left: 8px; right: 8px; height: 3px; background: rgba(255,255,255,0.2); border-radius: 99px; }
+
+#game { flex: 1; display: flex; gap: 8px; padding: 10px 8px 24px; max-width: 960px; margin: 0 auto; width: 100%; align-items: flex-start; }
+.col { flex: 1; display: flex; flex-direction: column; gap: 7px; min-width: 0; }
+.col-head { font-size: 0.72rem; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); text-align: center; padding: 5px 0 8px; border-bottom: 1px solid #2a3158; margin-bottom: 2px; }
+
+.dcard { background: var(--card-bg); border: 1.5px solid var(--card-border); border-radius: 11px; padding: 10px 11px 9px; cursor: grab; user-select: none; transition: transform .15s, box-shadow .2s, border-color .2s, opacity .3s; position: relative; overflow: hidden; }
+.dcard::before { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg,rgba(255,255,255,0.03) 0%,transparent 60%); pointer-events: none; }
+.dcard:hover:not(.used) { transform: translateY(-2px); border-color: #3d4a70; box-shadow: 0 6px 20px rgba(0,0,0,0.4); }
+.dcard:active:not(.used) { cursor: grabbing; }
+.dcard.dragging { opacity: 0.3; transform: scale(0.94); }
+.dcard.used { opacity: 0.16; pointer-events: none; }
+.dcard-icon { font-size: 1.15rem; }
+.dcard-name { font-size: 0.77rem; font-weight: 600; color: var(--text); margin-top: 4px; line-height: 1.35; }
+
+#center { flex: 0 0 178px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+#dropzone { width: 160px; height: 244px; border-radius: 22px; border: 2px dashed #2a3158; background: rgba(28,32,56,0.5); display: flex; align-items: center; justify-content: center; position: relative; transition: border-color .25s, background .25s, transform .2s; }
+#dropzone.over { border-color: var(--accent2); background: rgba(126,184,247,0.07); transform: scale(1.03); }
+
+#char-wrap { display: flex; flex-direction: column; align-items: center; gap: 7px; }
+.char-svg { width: 104px; height: 140px; display: none; filter: drop-shadow(0 4px 18px rgba(126,184,247,0.2)); transition: filter .6s ease; }
+.char-svg.active { display: block; }
+.char-svg.glow-good { filter: drop-shadow(0 0 24px #22c55e) drop-shadow(0 0 8px #22c55e) drop-shadow(0 4px 12px rgba(34,197,94,0.5)); }
+.char-svg.glow-bad  { filter: drop-shadow(0 0 24px #ef4444) drop-shadow(0 0 8px #ef4444) drop-shadow(0 4px 12px rgba(239,68,68,0.5)); }
+@keyframes levelPop { 0%{transform:scale(0.65);opacity:0} 65%{transform:scale(1.14);opacity:1} 100%{transform:scale(1);opacity:1} }
+.char-svg.level-pop { animation: levelPop .5s cubic-bezier(.34,1.56,.64,1) forwards; }
+
+#char-badge { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; border-radius: 99px; padding: 4px 12px; transition: all .4s; text-align: center; white-space: nowrap; border: 1px solid; }
+#char-badge.lvl-0 { color:#a0b0c8; border-color:rgba(160,176,200,0.3); background:rgba(160,176,200,0.08); }
+#char-badge.lvl-1 { color:#d0d8e8; border-color:rgba(208,216,232,0.4); background:rgba(208,216,232,0.1); }
+#char-badge.lvl-2 { color:var(--gold); border-color:rgba(240,192,96,0.4); background:rgba(240,192,96,0.1); }
+#char-badge.lvl-3 { color:#a8d8ff; border-color:rgba(168,216,255,0.45); background:rgba(168,216,255,0.12); }
+#char-badge.lvl-4 { color:#ffd700; border-color:rgba(255,215,0,0.6); background:rgba(255,215,0,0.14); }
+
+#prog-hint { font-size: 0.72rem; color: var(--muted); text-align: center; font-weight: 600; }
+#prog-hint span { color: var(--accent2); font-weight: 700; }
+
+/* Level-up banner */
+#levelup-banner { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%) scale(0); z-index: 150; pointer-events: none; background: linear-gradient(135deg,#1c2038,#252d50); border: 2px solid var(--accent); border-radius: 20px; padding: 18px 36px; text-align: center; box-shadow: 0 0 50px rgba(200,169,110,0.3); transition: transform .35s cubic-bezier(.34,1.56,.64,1), opacity .3s; opacity: 0; }
+#levelup-banner.show { transform: translate(-50%,-50%) scale(1); opacity: 1; }
+#levelup-banner .lup-icon { font-size: 2.2rem; }
+#levelup-banner .lup-title { font-size: 0.75rem; color: var(--muted); font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin-top: 4px; }
+#levelup-banner .lup-name  { font-size: 1.1rem; font-weight: 800; color: var(--accent); margin-top: 2px; }
+
+#flash { position: fixed; inset: 0; z-index: 50; pointer-events: none; opacity: 0; transition: opacity .12s; border: 5px solid transparent; }
+#flash.flash-good { border-color: rgba(34,197,94,0.55); opacity: 1; box-shadow: inset 0 0 50px rgba(34,197,94,0.1); }
+#flash.flash-bad  { border-color: rgba(239,68,68,0.55);  opacity: 1; box-shadow: inset 0 0 50px rgba(239,68,68,0.1); }
+
+#toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--card-bg); border: 1.5px solid var(--card-border); border-radius: 16px; padding: 13px 26px; text-align: center; z-index: 80; opacity: 0; pointer-events: none; transition: opacity .25s, transform .3s cubic-bezier(.34,1.56,.64,1); min-width: 190px; box-shadow: 0 12px 40px rgba(0,0,0,0.5); }
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+#toast-val { font-size: 1.15rem; font-weight: 800; }
+#toast-label { font-size: 0.78rem; color: var(--muted); margin-top: 3px; font-weight: 500; }
+#toast.t-good { border-color: rgba(34,197,94,0.5); } #toast.t-good #toast-val { color: var(--good-glow); }
+#toast.t-bad  { border-color: rgba(239,68,68,0.5);  } #toast.t-bad  #toast-val { color: var(--bad-glow); }
+
+.pt { position: fixed; pointer-events: none; z-index: 200; font-size: 1.4rem; animation: ptfly 1s ease-out forwards; }
+@keyframes ptfly { 0%{opacity:1;transform:translateY(0) scale(1)} 100%{opacity:0;transform:translateY(-80px) scale(0.3)} }
+
+#win { display: none; position: fixed; inset: 0; z-index: 300; background: rgba(8,10,20,0.94); align-items: center; justify-content: center; flex-direction: column; text-align: center; padding: 36px 28px; backdrop-filter: blur(12px); }
+#win.show { display: flex; }
+#win-icon { font-size: 4.8rem; animation: wb .7s ease infinite alternate; }
+@keyframes wb { from{transform:scale(1)} to{transform:scale(1.1) translateY(-7px)} }
+#win h2 { font-size: clamp(1.4rem,3vw,1.9rem); font-weight: 900; color: var(--accent); margin: 14px 0 6px; }
+#win-score { font-size: clamp(3rem,7vw,4.2rem); font-weight: 900; background: linear-gradient(135deg,var(--gold),var(--good-glow)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+#win-meta { color: var(--muted); font-size: 0.9rem; line-height: 2; margin: 8px 0 18px; font-weight: 500; }
+#win-meta b { color: var(--text); font-weight: 700; }
+#win-verdict { font-size: 1.05rem; font-weight: 700; color: var(--accent); margin-bottom: 22px; }
+#btn-restart { padding: 14px 40px; border: none; border-radius: 99px; background: linear-gradient(135deg,var(--good-glow),var(--accent2)); font-family: var(--font); font-size: 1rem; font-weight: 700; color: #0b0e1a; cursor: pointer; transition: transform .2s, box-shadow .2s; box-shadow: 0 6px 24px rgba(34,197,94,0.35); }
+#btn-restart:hover { transform: scale(1.05); }
+@keyframes shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-6px)} 40%{transform:translateX(6px)} 60%{transform:translateX(-4px)} 80%{transform:translateX(4px)} }
+.shake { animation: shake .4s ease; }
+
+@media(max-width:560px){
+  #center{flex:0 0 136px} #dropzone{width:122px;height:196px} .char-svg{width:78px;height:106px}
+  .dcard-name{font-size:0.7rem} .dcard{padding:8px 9px} #char-badge{font-size:0.6rem;padding:3px 8px}
+}
+</style>
+</head>
+<body>
+<canvas id="bg-canvas"></canvas>
+<div id="app">
+
+<header>
+  <h1>Hành Trình Tư Vấn Viên</h1>
+  <p class="subtitle">
+    Kéo các yếu tố phù hợp và thả vào vị trí TVV để hỗ trợ TVV này thành công.<br>
+    <span class="warn">Lưu ý: Các yếu tố không phù hợp có thể cản trở sự phát triển của TVV.</span>
+  </p>
+</header>
+
+<div id="hud">
+  <div class="hud-row">
+    <span>⚡ Năng lượng</span>
+    <span>Điểm: <strong id="s-score">0</strong> &nbsp;|&nbsp; ✅ <strong id="s-good" style="color:#22c55e">0</strong> &nbsp; ⚠️ <strong id="s-bad" style="color:#ef4444">0</strong></span>
+  </div>
+  <div id="energy-track"><div id="energy-fill"></div></div>
+</div>
+
+<div id="game">
+  <div class="col" id="col-left"><div class="col-head">Yếu Tố</div></div>
+
+  <div id="center">
+    <div id="dropzone">
+      <div id="char-wrap">
+
+        <!-- ══════════════════════════════════════════
+             LVL 0 · TƯ VẤN VIÊN MỚI
+             Sơ mi trắng, quần tây xám, tập hồ sơ
+        ══════════════════════════════════════════ -->
+        <svg id="char-0" class="char-svg active" viewBox="0 0 100 136" fill="none">
+          <!-- Trousers grey -->
+          <rect x="30" y="98" width="16" height="30" rx="7" fill="#374151"/>
+          <rect x="54" y="98" width="16" height="30" rx="7" fill="#374151"/>
+          <!-- Basic shoes -->
+          <ellipse cx="38" cy="129" rx="11" ry="4.5" fill="#1f2937"/>
+          <ellipse cx="62" cy="129" rx="11" ry="4.5" fill="#1f2937"/>
+          <rect x="27" y="124" width="22" height="7" rx="3.5" fill="#2d3748"/>
+          <rect x="51" y="124" width="22" height="7" rx="3.5" fill="#2d3748"/>
+          <!-- White dress shirt body -->
+          <rect x="22" y="60" width="56" height="43" rx="11" fill="#eef2ff"/>
+          <!-- Shirt collar V -->
+          <path d="M40 60 L50 70 L60 60" stroke="#c7d2fe" stroke-width="1.5" fill="none"/>
+          <!-- Simple blue tie -->
+          <polygon points="50,62 53.5,70 50,88 46.5,70" fill="#3b82f6"/>
+          <polygon points="46.5,70 53.5,70 52.5,74 47.5,74" fill="#2563eb"/>
+          <!-- Shirt buttons -->
+          <circle cx="50" cy="76" r="1.5" fill="#c7d2fe"/>
+          <circle cx="50" cy="83" r="1.5" fill="#c7d2fe"/>
+          <!-- Left arm white shirt -->
+          <rect x="10" y="62" width="14" height="33" rx="7" fill="#eef2ff"/>
+          <rect x="10" y="90" width="14" height="12" rx="6" fill="#f9d9b4"/>
+          <!-- Right arm + folder -->
+          <rect x="76" y="62" width="14" height="33" rx="7" fill="#eef2ff"/>
+          <rect x="76" y="90" width="14" height="12" rx="6" fill="#f9d9b4"/>
+          <!-- Document folder -->
+          <rect x="78" y="94" width="18" height="22" rx="3" fill="#bfdbfe"/>
+          <rect x="78" y="94" width="18" height="7" rx="3" fill="#93c5fd"/>
+          <line x1="80" y1="106" x2="94" y2="106" stroke="#60a5fa" stroke-width="1"/>
+          <line x1="80" y1="110" x2="91" y2="110" stroke="#60a5fa" stroke-width="1"/>
+          <!-- Neck -->
+          <rect x="43" y="48" width="14" height="16" rx="7" fill="#f9d9b4"/>
+          <!-- Head -->
+          <ellipse cx="50" cy="34" rx="22" ry="23" fill="#f9d9b4"/>
+          <!-- Hair — clean cut -->
+          <path d="M28 29 Q28 10 50 9 Q72 10 72 29 Q70 18 50 17 Q30 18 28 29Z" fill="#2c1810"/>
+          <rect x="28" y="27" width="6" height="12" rx="4" fill="#2c1810"/>
+          <rect x="66" y="27" width="6" height="12" rx="4" fill="#2c1810"/>
+          <!-- Ears -->
+          <ellipse cx="28" cy="35" rx="3.5" ry="4.5" fill="#f9d9b4"/>
+          <ellipse cx="72" cy="35" rx="3.5" ry="4.5" fill="#f9d9b4"/>
+          <!-- Eyes -->
+          <ellipse cx="40" cy="34" rx="4" ry="4.2" fill="white"/>
+          <ellipse cx="60" cy="34" rx="4" ry="4.2" fill="white"/>
+          <circle cx="41" cy="35" r="2.6" fill="#1e293b"/>
+          <circle cx="61" cy="35" r="2.6" fill="#1e293b"/>
+          <circle cx="42" cy="34" r="1" fill="white"/>
+          <circle cx="62" cy="34" r="1" fill="white"/>
+          <!-- Brows — slightly raised/nervous -->
+          <path d="M35 28 Q40 25 45 27" stroke="#2c1810" stroke-width="1.8" stroke-linecap="round" fill="none"/>
+          <path d="M55 27 Q60 25 65 28" stroke="#2c1810" stroke-width="1.8" stroke-linecap="round" fill="none"/>
+          <!-- Nose -->
+          <path d="M48 38 Q50 41 52 38" stroke="#c8966a" stroke-width="1.2" stroke-linecap="round" fill="none"/>
+          <!-- Mouth — mild nervous smile -->
+          <path d="M43 46 Q50 50 57 46" stroke="#b07050" stroke-width="1.8" stroke-linecap="round" fill="none"/>
+          <!-- Aura neutral -->
+          <circle cx="50" cy="66" r="46" stroke="rgba(160,176,200,0.1)" stroke-width="2" fill="none" stroke-dasharray="5 5"/>
+        </svg>
+
+        <!-- ══════════════════════════════════════════
+             LVL 1 · GENLION BẠC
+             Vest xám, cà vạt bạc, túi xách nhỏ
+        ══════════════════════════════════════════ -->
+        <svg id="char-1" class="char-svg" viewBox="0 0 100 136" fill="none">
+          <rect x="30" y="98" width="16" height="30" rx="7" fill="#4b5563"/>
+          <rect x="54" y="98" width="16" height="30" rx="7" fill="#4b5563"/>
+          <ellipse cx="38" cy="129" rx="11.5" ry="4.5" fill="#111827"/>
+          <ellipse cx="62" cy="129" rx="11.5" ry="4.5" fill="#111827"/>
+          <rect x="26" y="124" width="24" height="7" rx="3.5" fill="#1f2937"/>
+          <rect x="50" y="124" width="24" height="7" rx="3.5" fill="#1f2937"/>
+          <!-- Jacket grey -->
+          <rect x="20" y="60" width="60" height="43" rx="12" fill="#6b7280"/>
+          <rect x="38" y="60" width="24" height="30" rx="5" fill="#f1f5f9"/>
+          <!-- Silver tie -->
+          <polygon points="50,63 53.5,71 50,89 46.5,71" fill="#94a3b8"/>
+          <polygon points="46.5,71 53.5,71 52.5,76 47.5,76" fill="#64748b"/>
+          <!-- Lapels -->
+          <path d="M38 60 L26 74 L38 94" stroke="#4b5563" stroke-width="1.5" fill="none"/>
+          <path d="M62 60 L74 74 L62 94" stroke="#4b5563" stroke-width="1.5" fill="none"/>
+          <!-- White pocket square -->
+          <rect x="24" y="66" width="8" height="6" rx="1" fill="white" opacity="0.9"/>
+          <path d="M24 66 Q28 63 32 66" fill="white" stroke="#e2e8f0" stroke-width="0.5"/>
+          <!-- Suit button -->
+          <circle cx="50" cy="95" r="2.5" fill="#4b5563" stroke="#94a3b8" stroke-width="1"/>
+          <!-- Arms grey -->
+          <rect x="8" y="62" width="14" height="34" rx="7" fill="#6b7280"/>
+          <rect x="8" y="91" width="14" height="12" rx="6" fill="#f9d9b4"/>
+          <rect x="78" y="62" width="14" height="34" rx="7" fill="#6b7280"/>
+          <rect x="78" y="91" width="14" height="12" rx="6" fill="#f9d9b4"/>
+          <!-- Small silver briefcase -->
+          <rect x="80" y="94" width="22" height="17" rx="4" fill="#94a3b8"/>
+          <rect x="85" y="91" width="12" height="5" rx="2" fill="#64748b" stroke="#94a3b8" stroke-width="1"/>
+          <line x1="80" y1="103" x2="102" y2="103" stroke="#64748b" stroke-width="1"/>
+          <rect x="89.5" y="100" width="5" height="5" rx="1" fill="#64748b"/>
+          <!-- Collar -->
+          <rect x="36" y="55" width="28" height="10" rx="5" fill="#f1f5f9"/>
+          <rect x="43" y="48" width="14" height="12" rx="6" fill="#f9d9b4"/>
+          <!-- Head -->
+          <ellipse cx="50" cy="33" rx="22" ry="23" fill="#f9d9b4"/>
+          <!-- Hair neat side part -->
+          <path d="M28 28 Q28 10 50 9 Q72 10 72 28 Q70 17 50 17 Q30 17 28 28Z" fill="#1c0e08"/>
+          <path d="M36 17 Q40 20 38 27" stroke="#2c1810" stroke-width="1.5" fill="none"/>
+          <rect x="28" y="26" width="6" height="12" rx="4" fill="#1c0e08"/>
+          <rect x="66" y="26" width="6" height="12" rx="4" fill="#1c0e08"/>
+          <ellipse cx="28" cy="34" rx="3.5" ry="4.5" fill="#f9d9b4"/>
+          <ellipse cx="72" cy="34" rx="3.5" ry="4.5" fill="#f9d9b4"/>
+          <!-- Eyes confident -->
+          <ellipse cx="40" cy="33" rx="4" ry="4" fill="white"/>
+          <ellipse cx="60" cy="33" rx="4" ry="4" fill="white"/>
+          <circle cx="41" cy="34" r="2.6" fill="#1e293b"/>
+          <circle cx="61" cy="34" r="2.6" fill="#1e293b"/>
+          <circle cx="42" cy="33" r="1.1" fill="white"/>
+          <circle cx="62" cy="33" r="1.1" fill="white"/>
+          <path d="M35 27 Q40 24 45 26" stroke="#1c0e08" stroke-width="2" stroke-linecap="round" fill="none"/>
+          <path d="M55 26 Q60 24 65 27" stroke="#1c0e08" stroke-width="2" stroke-linecap="round" fill="none"/>
+          <path d="M48 37 Q50 40 52 37" stroke="#c8966a" stroke-width="1.2" stroke-linecap="round" fill="none"/>
+          <!-- Smile -->
+          <path d="M42 45 Q50 51 58 45" stroke="#b07050" stroke-width="2" stroke-linecap="round" fill="none"/>
+          <circle cx="50" cy="66" r="46" stroke="rgba(148,163,184,0.18)" stroke-width="2" fill="none" stroke-dasharray="5 5"/>
+        </svg>
+
+        <!-- ══════════════════════════════════════════
+             LVL 2 · GENLION VÀNG
+             Suit navy, cà vạt vàng, đồng hồ, briefcase vàng
+        ══════════════════════════════════════════ -->
+        <svg id="char-2" class="char-svg" viewBox="0 0 100 136" fill="none">
+          <rect x="30" y="98" width="16" height="30" rx="7" fill="#1e3a5f"/>
+          <rect x="54" y="98" width="16" height="30" rx="7" fill="#1e3a5f"/>
+          <ellipse cx="38" cy="129" rx="12" ry="4.5" fill="#0f172a"/>
+          <ellipse cx="62" cy="129" rx="12" ry="4.5" fill="#0f172a"/>
+          <rect x="26" y="124" width="24" height="7" rx="3.5" fill="#1e293b"/>
+          <rect x="50" y="124" width="24" height="7" rx="3.5" fill="#1e293b"/>
+          <ellipse cx="33" cy="126" rx="4.5" ry="1.8" fill="rgba(255,255,255,0.18)"/>
+          <ellipse cx="57" cy="126" rx="4.5" ry="1.8" fill="rgba(255,255,255,0.18)"/>
+          <!-- Navy jacket -->
+          <rect x="20" y="60" width="60" height="43" rx="12" fill="#1e3a5f"/>
+          <rect x="38" y="60" width="24" height="32" rx="5" fill="#f8faff"/>
+          <!-- Gold tie -->
+          <polygon points="50,63 54,71 50,91 46,71" fill="#f0c060"/>
+          <polygon points="46,71 54,71 52.5,76 47.5,76" fill="#c8a040"/>
+          <!-- Tie pin -->
+          <rect x="47" y="77" width="6" height="2" rx="1" fill="#c8a96e"/>
+          <!-- Lapels -->
+          <path d="M38 60 L26 74 L38 96" stroke="#152d4a" stroke-width="1.5" fill="none"/>
+          <path d="M62 60 L74 74 L62 96" stroke="#152d4a" stroke-width="1.5" fill="none"/>
+          <!-- Gold pocket square -->
+          <rect x="23" y="65" width="9" height="7" rx="1" fill="#f0c060"/>
+          <path d="M23 65 Q27.5 61 32 65" fill="#fde68a" stroke="#f0c060" stroke-width="0.5"/>
+          <!-- Jacket button -->
+          <circle cx="50" cy="96" r="2.5" fill="#152d4a" stroke="#c8a96e" stroke-width="1"/>
+          <!-- Left arm + watch -->
+          <rect x="8" y="62" width="14" height="34" rx="7" fill="#1e3a5f"/>
+          <rect x="8" y="91" width="14" height="12" rx="6" fill="#f9d9b4"/>
+          <rect x="7" y="91" width="16" height="7" rx="3" fill="#0f172a"/>
+          <circle cx="15" cy="94.5" r="3" fill="#0f172a" stroke="#f0c060" stroke-width="1"/>
+          <line x1="15" y1="94.5" x2="15" y2="92.5" stroke="#f0c060" stroke-width="0.8"/>
+          <line x1="15" y1="94.5" x2="16.8" y2="94.5" stroke="#f0c060" stroke-width="0.8"/>
+          <!-- Right arm + gold briefcase -->
+          <rect x="78" y="62" width="14" height="34" rx="7" fill="#1e3a5f"/>
+          <rect x="78" y="91" width="14" height="12" rx="6" fill="#f9d9b4"/>
+          <rect x="79" y="93" width="24" height="19" rx="5" fill="#c8a96e"/>
+          <rect x="84" y="90" width="14" height="5" rx="2.5" fill="#b89050" stroke="#c8a96e" stroke-width="1"/>
+          <line x1="79" y1="103" x2="103" y2="103" stroke="#b89050" stroke-width="1"/>
+          <rect x="88.5" y="99.5" width="6" height="7" rx="1.5" fill="#b89050"/>
+          <!-- Collar -->
+          <rect x="36" y="55" width="28" height="10" rx="5" fill="#f8faff"/>
+          <rect x="43" y="48" width="14" height="12" rx="6" fill="#f9d9b4"/>
+          <!-- Head -->
+          <ellipse cx="50" cy="33" rx="22" ry="23" fill="#f9d9b4"/>
+          <!-- Hair styled -->
+          <path d="M28 27 Q28 10 50 9 Q72 10 72 27 Q70 17 50 17 Q30 17 28 27Z" fill="#1c0e08"/>
+          <rect x="28" y="25" width="6" height="13" rx="4" fill="#1c0e08"/>
+          <rect x="66" y="25" width="6" height="13" rx="4" fill="#1c0e08"/>
+          <ellipse cx="28" cy="34" rx="3.5" ry="4.5" fill="#f9d9b4"/>
+          <ellipse cx="72" cy="34" rx="3.5" ry="4.5" fill="#f9d9b4"/>
+          <ellipse cx="40" cy="33" rx="4" ry="4" fill="white"/>
+          <ellipse cx="60" cy="33" rx="4" ry="4" fill="white"/>
+          <circle cx="41" cy="34" r="2.8" fill="#1a2c3e"/>
+          <circle cx="61" cy="34" r="2.8" fill="#1a2c3e"/>
+          <circle cx="42" cy="33" r="1.1" fill="white"/>
+          <circle cx="62" cy="33" r="1.1" fill="white"/>
+          <path d="M35 27 Q40 24 45 26" stroke="#1c0e08" stroke-width="2" stroke-linecap="round" fill="none"/>
+          <path d="M55 26 Q60 24 65 27" stroke="#1c0e08" stroke-width="2" stroke-linecap="round" fill="none"/>
+          <path d="M48 37 Q50 40 52 37" stroke="#c8966a" stroke-width="1.2" stroke-linecap="round" fill="none"/>
+          <!-- Genuine smile -->
+          <path d="M41 44 Q50 53 59 44" stroke="#b07050" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+          <circle cx="50" cy="66" r="46" stroke="rgba(240,192,96,0.2)" stroke-width="2" fill="none" stroke-dasharray="5 4"/>
+        </svg>
+
+        <!-- ══════════════════════════════════════════
+             LVL 3 · GENLION KIM CƯƠNG
+             Suit charcoal premium, cà vạt xanh kim cương, laptop bag cao cấp
+        ══════════════════════════════════════════ -->
+        <svg id="char-3" class="char-svg" viewBox="0 0 100 136" fill="none">
+          <rect x="30" y="98" width="16" height="30" rx="7" fill="#2d3748"/>
+          <rect x="54" y="98" width="16" height="30" rx="7" fill="#2d3748"/>
+          <ellipse cx="38" cy="129" rx="12" ry="4.5" fill="#0f172a"/>
+          <ellipse cx="62" cy="129" rx="12" ry="4.5" fill="#0f172a"/>
+          <rect x="26" y="124" width="24" height="7" rx="3.5" fill="#1e293b"/>
+          <rect x="50" y="124" width="24" height="7" rx="3.5" fill="#1e293b"/>
+          <ellipse cx="32" cy="126" rx="5.5" ry="2" fill="rgba(255,255,255,0.22)"/>
+          <ellipse cx="56" cy="126" rx="5.5" ry="2" fill="rgba(255,255,255,0.22)"/>
+          <!-- Charcoal jacket -->
+          <rect x="18" y="60" width="64" height="44" rx="13" fill="#2d3748"/>
+          <!-- Shirt -->
+          <rect x="37" y="60" width="26" height="32" rx="5" fill="#f8faff"/>
+          <!-- Diamond blue tie -->
+          <polygon points="50,63 54,71 50,91 46,71" fill="#7dd3fc"/>
+          <polygon points="46,71 54,71 52.5,77 47.5,77" fill="#38bdf8"/>
+          <!-- Diamond tie pin -->
+          <rect x="47" y="78" width="6" height="2.5" rx="1" fill="white"/>
+          <circle cx="50" cy="79.2" r="1.5" fill="#e0f2fe"/>
+          <!-- Wide lapels -->
+          <path d="M37 60 L23 75 L37 97" stroke="#1a202c" stroke-width="1.8" fill="none"/>
+          <path d="M63 60 L77 75 L63 97" stroke="#1a202c" stroke-width="1.8" fill="none"/>
+          <!-- Blue pocket square -->
+          <rect x="21" y="63" width="10" height="8" rx="1" fill="#7dd3fc"/>
+          <path d="M21 63 Q26 59 31 63" fill="#bae6fd" stroke="#7dd3fc" stroke-width="0.5"/>
+          <!-- Buttons -->
+          <circle cx="50" cy="94" r="2.5" fill="#1a202c" stroke="#7dd3fc" stroke-width="1"/>
+          <circle cx="50" cy="86" r="2" fill="#1a202c" stroke="#7dd3fc" stroke-width="0.8"/>
+          <!-- Left arm + luxury watch -->
+          <rect x="7" y="62" width="13" height="34" rx="6.5" fill="#2d3748"/>
+          <rect x="7" y="91" width="13" height="12" rx="6" fill="#f9d9b4"/>
+          <rect x="6" y="91" width="15" height="8" rx="3" fill="#0f172a"/>
+          <circle cx="13.5" cy="95" r="4" fill="#0f172a" stroke="#7dd3fc" stroke-width="1.2"/>
+          <circle cx="13.5" cy="95" r="2.5" fill="#1e293b"/>
+          <line x1="13.5" y1="95" x2="13.5" y2="92.5" stroke="#7dd3fc" stroke-width="0.8"/>
+          <line x1="13.5" y1="95" x2="15.5" y2="95" stroke="#7dd3fc" stroke-width="0.8"/>
+          <!-- Right arm + leather laptop bag -->
+          <rect x="80" y="62" width="13" height="34" rx="6.5" fill="#2d3748"/>
+          <rect x="80" y="91" width="13" height="12" rx="6" fill="#f9d9b4"/>
+          <rect x="80" y="92" width="24" height="18" rx="5" fill="#1a2c3e"/>
+          <rect x="80" y="92" width="24" height="18" rx="5" stroke="#7dd3fc" stroke-width="1" fill="none"/>
+          <rect x="85" y="89" width="14" height="5" rx="2.5" fill="#152238" stroke="#7dd3fc" stroke-width="0.8"/>
+          <line x1="80" y1="101" x2="104" y2="101" stroke="#7dd3fc" stroke-width="0.8" opacity="0.5"/>
+          <polygon points="91,95 94,98.5 91,102 88,98.5" fill="#7dd3fc" opacity="0.8"/>
+          <!-- Collar -->
+          <rect x="37" y="55" width="26" height="10" rx="5" fill="#f8faff"/>
+          <rect x="43" y="48" width="14" height="12" rx="6" fill="#f9d9b4"/>
+          <!-- Head -->
+          <ellipse cx="50" cy="33" rx="22" ry="23" fill="#f9d9b4"/>
+          <!-- Hair styled wave -->
+          <path d="M28 27 Q28 10 50 9 Q72 10 72 27 Q70 16 50 16 Q30 16 28 27Z" fill="#0f0500"/>
+          <path d="M33 16 Q42 11 50 14 Q58 11 67 16" stroke="#1c0800" stroke-width="2" fill="none" stroke-linecap="round"/>
+          <rect x="28" y="25" width="6" height="13" rx="4" fill="#0f0500"/>
+          <rect x="66" y="25" width="6" height="13" rx="4" fill="#0f0500"/>
+          <ellipse cx="28" cy="34" rx="3.5" ry="4.5" fill="#f9d9b4"/>
+          <ellipse cx="72" cy="34" rx="3.5" ry="4.5" fill="#f9d9b4"/>
+          <ellipse cx="40" cy="33" rx="4.2" ry="4.2" fill="white"/>
+          <ellipse cx="60" cy="33" rx="4.2" ry="4.2" fill="white"/>
+          <circle cx="41" cy="34" r="3" fill="#0a1020"/>
+          <circle cx="61" cy="34" r="3" fill="#0a1020"/>
+          <circle cx="42" cy="33" r="1.2" fill="white"/>
+          <circle cx="62" cy="33" r="1.2" fill="white"/>
+          <path d="M35 26.5 Q40 23.5 45 25.5" stroke="#0f0500" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+          <path d="M55 25.5 Q60 23.5 65 26.5" stroke="#0f0500" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+          <path d="M48 37 Q50 40 52 37" stroke="#c8966a" stroke-width="1.2" stroke-linecap="round" fill="none"/>
+          <path d="M40 43 Q50 53 60 43" stroke="#b07050" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+          <circle cx="50" cy="66" r="46" stroke="rgba(125,211,252,0.22)" stroke-width="2.5" fill="none" stroke-dasharray="4 3"/>
+        </svg>
+
+        <!-- ══════════════════════════════════════════
+             LVL 4 · MDRT
+             Tuxedo đen, nơ vàng, đồng hồ Rolex, trophy
+        ══════════════════════════════════════════ -->
+        <svg id="char-4" class="char-svg" viewBox="0 0 100 136" fill="none">
+          <rect x="30" y="98" width="16" height="30" rx="7" fill="#0f172a"/>
+          <rect x="54" y="98" width="16" height="30" rx="7" fill="#0f172a"/>
+          <!-- Tuxedo stripe -->
+          <rect x="37" y="98" width="2" height="30" rx="1" fill="rgba(200,169,110,0.5)"/>
+          <rect x="61" y="98" width="2" height="30" rx="1" fill="rgba(200,169,110,0.5)"/>
+          <!-- Premium shoes gloss -->
+          <ellipse cx="38" cy="129" rx="12" ry="4.5" fill="#050810"/>
+          <ellipse cx="62" cy="129" rx="12" ry="4.5" fill="#050810"/>
+          <rect x="26" y="124" width="24" height="7" rx="3.5" fill="#0f172a"/>
+          <rect x="50" y="124" width="24" height="7" rx="3.5" fill="#0f172a"/>
+          <ellipse cx="32" cy="126" rx="6" ry="2.2" fill="rgba(255,255,255,0.35)"/>
+          <ellipse cx="56" cy="126" rx="6" ry="2.2" fill="rgba(255,255,255,0.35)"/>
+          <!-- Tuxedo jacket -->
+          <rect x="18" y="58" width="64" height="46" rx="13" fill="#0f172a"/>
+          <!-- Satin lapels -->
+          <path d="M36 58 L23 74 L36 98" fill="#1e293b"/>
+          <path d="M64 58 L77 74 L64 98" fill="#1e293b"/>
+          <!-- Dress shirt -->
+          <rect x="37" y="58" width="26" height="34" rx="5" fill="#f8faff"/>
+          <!-- Shirt studs gold -->
+          <circle cx="50" cy="66" r="1.8" fill="#c8a96e"/>
+          <circle cx="50" cy="73" r="1.8" fill="#c8a96e"/>
+          <circle cx="50" cy="80" r="1.8" fill="#c8a96e"/>
+          <!-- Gold bow tie -->
+          <path d="M44 62 L50 67 L56 62 L56 59 L50 64 L44 59 Z" fill="#c8a96e"/>
+          <ellipse cx="50" cy="63" rx="2.8" ry="2.2" fill="#b89050"/>
+          <!-- MDRT pin on lapel -->
+          <circle cx="30" cy="71" r="4.5" fill="#c8a96e"/>
+          <circle cx="30" cy="71" r="3" fill="#0f172a"/>
+          <text x="30" y="72.5" text-anchor="middle" font-size="3.2" fill="#c8a96e" font-weight="bold">M</text>
+          <!-- Arms tuxedo -->
+          <rect x="6" y="60" width="14" height="36" rx="7" fill="#0f172a"/>
+          <rect x="6" y="91" width="14" height="12" rx="6" fill="#f9d9b4"/>
+          <!-- Rolex-style watch -->
+          <rect x="5" y="90" width="16" height="9" rx="4" fill="#0f172a"/>
+          <circle cx="13" cy="94.5" r="4.5" fill="#0f172a" stroke="#c8a96e" stroke-width="1.5"/>
+          <circle cx="13" cy="94.5" r="3" fill="#1e293b"/>
+          <line x1="13" y1="94.5" x2="13" y2="91.5" stroke="#c8a96e" stroke-width="1"/>
+          <line x1="13" y1="94.5" x2="15.5" y2="94.5" stroke="#c8a96e" stroke-width="1"/>
+          <circle cx="13" cy="91.5" r="1" fill="#c8a96e"/>
+          <!-- Right arm + trophy -->
+          <rect x="80" y="60" width="14" height="36" rx="7" fill="#0f172a"/>
+          <rect x="80" y="91" width="14" height="12" rx="6" fill="#f9d9b4"/>
+          <!-- Trophy detailed -->
+          <rect x="82" y="113" width="19" height="4" rx="2" fill="#b89050"/>
+          <rect x="84" y="108.5" width="15" height="5" rx="1.5" fill="#c8a96e"/>
+          <path d="M86 108 Q86 96 90 93 Q94 96 94 108" fill="#f0c060"/>
+          <path d="M85.5 101 Q82 99 82 96 Q85 93 86 97" fill="#f0c060"/>
+          <path d="M94.5 101 Q98 99 98 96 Q95 93 94 97" fill="#f0c060"/>
+          <ellipse cx="90" cy="93.5" rx="4.5" ry="3.5" fill="#fde68a"/>
+          <circle cx="90" cy="93.5" r="2" fill="#f0c060" stroke="#c8a040" stroke-width="0.8"/>
+          <text x="90" y="107" text-anchor="middle" font-size="6" fill="#b89050">★</text>
+          <!-- Collar -->
+          <rect x="37" y="54" width="26" height="10" rx="5" fill="#f8faff"/>
+          <rect x="43" y="48" width="14" height="11" rx="6" fill="#f9d9b4"/>
+          <!-- Head -->
+          <ellipse cx="50" cy="33" rx="22" ry="23" fill="#f9d9b4"/>
+          <!-- Hair perfectly styled -->
+          <path d="M28 27 Q28 9 50 9 Q72 9 72 27 Q70 15 50 15 Q30 15 28 27Z" fill="#0a0400"/>
+          <path d="M34 15 Q44 9 50 13 Q56 9 66 15" stroke="#150800" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+          <rect x="28" y="25" width="6" height="13" rx="4" fill="#0a0400"/>
+          <rect x="66" y="25" width="6" height="13" rx="4" fill="#0a0400"/>
+          <ellipse cx="28" cy="34" rx="3.5" ry="4.5" fill="#f9d9b4"/>
+          <ellipse cx="72" cy="34" rx="3.5" ry="4.5" fill="#f9d9b4"/>
+          <!-- Eyes commanding -->
+          <ellipse cx="40" cy="33" rx="4.5" ry="4.5" fill="white"/>
+          <ellipse cx="60" cy="33" rx="4.5" ry="4.5" fill="white"/>
+          <circle cx="41.5" cy="34" r="3.2" fill="#08101e"/>
+          <circle cx="61.5" cy="34" r="3.2" fill="#08101e"/>
+          <circle cx="43" cy="32.5" r="1.3" fill="white"/>
+          <circle cx="63" cy="32.5" r="1.3" fill="white"/>
+          <path d="M34 26 Q40 22.5 46 25" stroke="#0a0400" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+          <path d="M54 25 Q60 22.5 66 26" stroke="#0a0400" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+          <path d="M48 37 Q50 40 52 37" stroke="#c8966a" stroke-width="1.2" stroke-linecap="round" fill="none"/>
+          <!-- Proud big smile -->
+          <path d="M39 43 Q50 56 61 43" stroke="#b07050" stroke-width="2.8" stroke-linecap="round" fill="none"/>
+          <path d="M42 46.5 Q50 52 58 46.5 Q50 50 42 46.5Z" fill="rgba(255,255,255,0.45)"/>
+          <!-- Gold prestige aura -->
+          <circle cx="50" cy="66" r="46" stroke="rgba(200,169,110,0.38)" stroke-width="3" fill="none" stroke-dasharray="4 2"/>
+          <circle cx="50" cy="66" r="43" stroke="rgba(200,169,110,0.1)" stroke-width="1" fill="none"/>
+        </svg>
+
+        <div id="char-badge" class="lvl-0">Tư Vấn Viên Mới</div>
+      </div>
+    </div>
+    <div id="prog-hint">Còn lại: <span id="s-remain">0</span> yếu tố</div>
+  </div>
+
+  <div class="col" id="col-right"><div class="col-head">Yếu Tố</div></div>
+</div>
+</div>
+
+<div id="levelup-banner">
+  <div class="lup-icon" id="lup-icon"></div>
+  <div class="lup-title">THĂNG CẤP!</div>
+  <div class="lup-name" id="lup-name"></div>
+</div>
+
+<div id="flash"></div>
+<div id="toast"><div id="toast-val"></div><div id="toast-label"></div></div>
+
+<div id="win">
+  <div id="win-icon">🏆</div>
+  <h2>Hoàn Thành Hành Trình!</h2>
+  <div id="win-score">0</div>
+  <div style="color:var(--muted);font-size:.8rem;margin-top:-4px;font-weight:500">điểm tổng kết</div>
+  <div id="win-verdict"></div>
+  <div id="win-meta"></div>
+  <button id="btn-restart" onclick="init()">↺ &nbsp;Chơi lại</button>
+</div>
+
+<script>
+const GOOD = [
+  {icon:'💪', name:'Động viên tinh thần'},
+  {icon:'🤝', name:'Kết nối với đồng nghiệp cùng sở thích'},
+  {icon:'🎓', name:'Kèm cặp kỹ năng kịp thời'},
+  {icon:'📚', name:'Kiến thức sản phẩm'},
+  {icon:'🛠️', name:'Kỹ năng bán hàng'},
+  {icon:'📊', name:'Quản lý mục tiêu'},
+  {icon:'👥', name:'Hỗ trợ từ đồng nghiệp'},
+  {icon:'🏅', name:'Ghi nhận thành tích'},
+  {icon:'🗺️', name:'Lộ trình thăng tiến rõ ràng'},
+  {icon:'💡', name:'Đào tạo kỹ năng mềm'},
+];
+const BAD = [
+  {icon:'😴', name:'Lơ là nhân viên mới'},
+  {icon:'🦅', name:'Tự phát triển một mình'},
+  {icon:'🔗', name:'Thiếu gắn kết nhóm'},
+  {icon:'👏', name:'Khen ngợi qua loa'},
+  {icon:'🚫', name:'Thiếu định hướng'},
+  {icon:'📵', name:'Truyền thông kém'},
+  {icon:'⏳', name:'Trì hoãn đào tạo'},
+  {icon:'💸', name:'Áp lực doanh số'},
+  {icon:'🎭', name:'Văn hóa độc hại'},
+  {icon:'🙈', name:'Bỏ qua phản hồi'},
+];
+const LEVELS = [
+  {min:0,  label:'Tư Vấn Viên Mới',  cls:'lvl-0', icon:'📋', charId:'char-0'},
+  {min:20, label:'GenLion Bạc',        cls:'lvl-1', icon:'🥈', charId:'char-1'},
+  {min:40, label:'GenLion Vàng',       cls:'lvl-2', icon:'🥇', charId:'char-2'},
+  {min:60, label:'GenLion Kim Cương',  cls:'lvl-3', icon:'💎', charId:'char-3'},
+  {min:80, label:'MDRT',               cls:'lvl-4', icon:'🏆', charId:'char-4'},
+];
+
+let energy=0, goodDone=0, badDone=0;
+const totalGood=GOOD.length, MAX_E=100;
+let dragged=null, toastTmr=null, flashTmr=null, glowTmr=null, bannerTmr=null;
+let currentLvlIdx=0;
+
+// BG canvas
+(function(){
+  const cv=document.getElementById('bg-canvas'), ctx=cv.getContext('2d');
+  let dots=[];
+  const resize=()=>{ cv.width=innerWidth; cv.height=innerHeight; };
+  resize(); window.addEventListener('resize',resize);
+  for(let i=0;i<60;i++) dots.push({x:Math.random(),y:Math.random(),r:Math.random()*1.5+.4,a:Math.random()*Math.PI*2,s:Math.random()*.0004+.0001});
+  (function frame(){
+    ctx.clearRect(0,0,cv.width,cv.height);
+    dots.forEach(d=>{ d.a+=d.s; ctx.beginPath(); ctx.arc(d.x*cv.width,d.y*cv.height,d.r,0,Math.PI*2); ctx.fillStyle=`rgba(200,169,110,${0.07+0.1*Math.sin(d.a)})`; ctx.fill(); });
+    requestAnimationFrame(frame);
+  })();
+})();
+
+function init(){
+  energy=0; goodDone=0; badDone=0; currentLvlIdx=0;
+  document.getElementById('win').classList.remove('show');
+  document.getElementById('col-left').innerHTML  = '<div class="col-head">Yếu Tố</div>';
+  document.getElementById('col-right').innerHTML = '<div class="col-head">Yếu Tố</div>';
+  document.querySelectorAll('.char-svg').forEach(s=>s.classList.remove('active','glow-good','glow-bad','level-pop'));
+  document.getElementById('char-0').classList.add('active');
+  const shuffle=a=>[...a].sort(()=>Math.random()-.5);
+  const all=shuffle([...GOOD.map(c=>({...c,type:'good'})),...BAD.map(c=>({...c,type:'bad'}))]);
+  all.forEach((c,i)=>makeCard(c,i%2===0?'col-left':'col-right'));
+  updateHUD(); updateChar(false);
+}
+
+function makeCard(data,colId){
+  const col=document.getElementById(colId);
+  const d=document.createElement('div');
+  d.className='dcard'; d.dataset.type=data.type; d.dataset.name=data.name; d.draggable=true;
+  d.innerHTML=`<span class="dcard-icon">${data.icon}</span><div class="dcard-name">${data.name}</div>`;
+  d.addEventListener('dragstart',e=>{ dragged=d; setTimeout(()=>d.classList.add('dragging'),10); e.dataTransfer.effectAllowed='move'; });
+  d.addEventListener('dragend',()=>d.classList.remove('dragging'));
+  let clone=null;
+  d.addEventListener('touchstart',e=>{ if(d.classList.contains('used')) return; dragged=d; const t=e.touches[0]; clone=d.cloneNode(true); Object.assign(clone.style,{position:'fixed',zIndex:500,pointerEvents:'none',opacity:'.9',width:d.offsetWidth+'px',left:(t.clientX-d.offsetWidth/2)+'px',top:(t.clientY-24)+'px',transform:'scale(1.07)'}); document.body.appendChild(clone); d.classList.add('dragging'); },{passive:true});
+  d.addEventListener('touchmove',e=>{ if(!clone) return; const t=e.touches[0]; clone.style.left=(t.clientX-d.offsetWidth/2)+'px'; clone.style.top=(t.clientY-24)+'px'; },{passive:true});
+  d.addEventListener('touchend',e=>{ if(!clone) return; const t=e.changedTouches[0]; const z=document.getElementById('dropzone').getBoundingClientRect(); const hit=t.clientX>=z.left&&t.clientX<=z.right&&t.clientY>=z.top&&t.clientY<=z.bottom; clone.remove(); clone=null; d.classList.remove('dragging'); if(hit) handleDrop(dragged); dragged=null; });
+  col.appendChild(d);
+}
+
+const dz=document.getElementById('dropzone');
+dz.addEventListener('dragover',e=>{ e.preventDefault(); dz.classList.add('over'); e.dataTransfer.dropEffect='move'; });
+dz.addEventListener('dragleave',()=>dz.classList.remove('over'));
+dz.addEventListener('drop',e=>{ e.preventDefault(); dz.classList.remove('over'); if(dragged){handleDrop(dragged);dragged=null;} });
+
+function handleDrop(card){
+  if(!card||card.classList.contains('used')) return;
+  card.classList.add('used');
+  const isGood=card.dataset.type==='good';
+  const name=card.dataset.name;
+  const r=dz.getBoundingClientRect();
+  const cx=r.left+r.width/2, cy=r.top+r.height/2;
+  if(isGood){ goodDone++; energy=Math.min(MAX_E,energy+10); triggerGlow('good'); flashScreen('good'); showToast('good','+10','⚡ '+name); spawn(cx,cy,'✨'); spawn(cx-28,cy-14,'💚'); }
+  else { badDone++; energy=Math.max(0,energy-8); triggerGlow('bad'); flashScreen('bad'); showToast('bad','−8','⚡ '+name); dz.classList.add('shake'); setTimeout(()=>dz.classList.remove('shake'),450); spawn(cx,cy,'💔'); spawn(cx+22,cy-12,'❌'); }
+  updateHUD(); updateChar(true);
+  if(goodDone>=totalGood) setTimeout(showWin,900);
+}
+
+function updateChar(animate){
+  const pct=energy/MAX_E*100;
+  let lvIdx=0;
+  for(let i=0;i<LEVELS.length;i++) if(pct>=LEVELS[i].min) lvIdx=i;
+  const lv=LEVELS[lvIdx];
+  document.getElementById('char-badge').textContent=lv.label;
+  document.getElementById('char-badge').className=lv.cls;
+  if(lvIdx!==currentLvlIdx){
+    const isUp=lvIdx>currentLvlIdx;
+    document.getElementById(LEVELS[currentLvlIdx].charId).classList.remove('active','glow-good','glow-bad');
+    const next=document.getElementById(lv.charId);
+    next.classList.remove('level-pop');
+    void next.offsetWidth;
+    next.classList.add('active');
+    if(animate) next.classList.add('level-pop');
+    if(isUp) showLevelUpBanner(lv);
+    currentLvlIdx=lvIdx;
+  }
+}
+
+function showLevelUpBanner(lv){
+  document.getElementById('lup-icon').textContent=lv.icon;
+  document.getElementById('lup-name').textContent=lv.label;
+  const b=document.getElementById('levelup-banner');
+  b.classList.add('show');
+  clearTimeout(bannerTmr);
+  bannerTmr=setTimeout(()=>b.classList.remove('show'),2200);
+  for(let i=0;i<12;i++) setTimeout(()=>spawn(innerWidth/2+(Math.random()-.5)*220,innerHeight*.4+Math.random()*110,['⭐','🌟','✨','🎊','🥳','💫'][Math.floor(Math.random()*6)]),i*55);
+}
+
+function triggerGlow(type){
+  const svg=document.getElementById(LEVELS[currentLvlIdx].charId);
+  svg.classList.remove('glow-good','glow-bad'); void svg.offsetWidth;
+  svg.classList.add(type==='good'?'glow-good':'glow-bad');
+  clearTimeout(glowTmr); glowTmr=setTimeout(()=>svg.classList.remove('glow-good','glow-bad'),950);
+}
+function flashScreen(type){ const f=document.getElementById('flash'); f.className='flash-'+type; clearTimeout(flashTmr); flashTmr=setTimeout(()=>f.className='',320); }
+function showToast(type,val,label){ const t=document.getElementById('toast'); document.getElementById('toast-val').textContent=val; document.getElementById('toast-label').textContent=label; t.className='show t-'+type; clearTimeout(toastTmr); toastTmr=setTimeout(()=>t.className='',1700); }
+function spawn(x,y,e){ const p=document.createElement('div'); p.className='pt'; p.textContent=e; p.style.left=(x+(Math.random()-.5)*44)+'px'; p.style.top=(y+(Math.random()-.5)*22)+'px'; document.body.appendChild(p); setTimeout(()=>p.remove(),1050); }
+function updateHUD(){ const pct=Math.round(energy/MAX_E*100); const fill=document.getElementById('energy-fill'); fill.style.width=pct+'%'; fill.style.background=energy<25?'linear-gradient(90deg,#ef4444,#f97316)':energy<55?'linear-gradient(90deg,#f0c060,#22c55e)':'linear-gradient(90deg,#22c55e,#7eb8f7)'; document.getElementById('s-score').textContent=goodDone-badDone; document.getElementById('s-good').textContent=goodDone; document.getElementById('s-bad').textContent=badDone; document.getElementById('s-remain').textContent=totalGood-goodDone; }
+function showWin(){ const score=goodDone-badDone; const verdict=score>=8?'🏆 Đạt danh hiệu MDRT!':score>=5?'💎 GenLion Kim Cương':score>=2?'🥇 GenLion Vàng':'💡 Cần Cải Thiện Thêm'; document.getElementById('win-score').textContent=score+' điểm'; document.getElementById('win-verdict').textContent=verdict; document.getElementById('win-meta').innerHTML=`Yếu tố hỗ trợ: <b>${goodDone}</b> &nbsp;|&nbsp; Thử thách gặp: <b>${badDone}</b><br>Năng lượng cuối: <b>${Math.round(energy/MAX_E*100)}%</b>`; document.getElementById('win').classList.add('show'); for(let i=0;i<20;i++) setTimeout(()=>spawn(innerWidth*Math.random(),innerHeight*.25+Math.random()*260,['🎉','🌟','✨','🏅','🎊','💫','🦁'][Math.floor(Math.random()*7)]),i*65); }
+
+init();
+</script>
+</body>
+</html>
