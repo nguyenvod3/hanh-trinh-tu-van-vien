@@ -594,9 +594,9 @@ function makeCard(data,colId){
   d.addEventListener('dragstart',e=>{ dragged=d; setTimeout(()=>d.classList.add('dragging'),10); e.dataTransfer.effectAllowed='move'; });
   d.addEventListener('dragend',()=>d.classList.remove('dragging'));
   let clone=null;
-  d.addEventListener('touchstart',e=>{ if(d.classList.contains('used')) return; dragged=d; const t=e.touches[0]; clone=d.cloneNode(true); Object.assign(clone.style,{position:'fixed',zIndex:500,pointerEvents:'none',opacity:'.9',width:d.offsetWidth+'px',left:(t.clientX-d.offsetWidth/2)+'px',top:(t.clientY-24)+'px',transform:'scale(1.07)'}); document.body.appendChild(clone); d.classList.add('dragging'); },{passive:true});
-  d.addEventListener('touchmove',e=>{ if(!clone) return; const t=e.touches[0]; clone.style.left=(t.clientX-d.offsetWidth/2)+'px'; clone.style.top=(t.clientY-24)+'px'; },{passive:true});
-  d.addEventListener('touchend',e=>{ if(!clone) return; const t=e.changedTouches[0]; const z=document.getElementById('dropzone').getBoundingClientRect(); const hit=t.clientX>=z.left&&t.clientX<=z.right&&t.clientY>=z.top&&t.clientY<=z.bottom; clone.remove(); clone=null; d.classList.remove('dragging'); if(hit) handleDrop(dragged); dragged=null; });
+  d.addEventListener('touchstart',e=>{ if(d.classList.contains('used')) return; dragged=d; const t=e.touches[0]; clone=d.cloneNode(true); Object.assign(clone.style,{position:'fixed',zIndex:500,pointerEvents:'none',opacity:'.9',width:d.offsetWidth+'px',left:(t.clientX-d.offsetWidth/2)+'px',top:(t.clientY-24)+'px',transform:'scale(1.07)'}); document.body.appendChild(clone); d.classList.add('dragging'); },{ passive:false });
+  d.addEventListener('touchmove',e=>{ if(!clone) return; e.preventDefault(); const t=e.touches[0]; clone.style.left=(t.clientX-d.offsetWidth/2)+'px'; clone.style.top=(t.clientY-24)+'px'; },{ passive:false });
+  d.addEventListener('touchend',e=>{ if(!clone) return; const t=e.changedTouches[0]; const z=document.getElementById('dropzone').getBoundingClientRect(); const hit=t.clientX>=z.left&&t.clientX<=z.right&&t.clientY>=z.top&&t.clientY<=z.bottom; clone.remove(); clone=null; d.classList.remove('dragging'); if(hit) handleDrop(dragged); dragged=null; },{ passive:false });
   col.appendChild(d);
 }
 
