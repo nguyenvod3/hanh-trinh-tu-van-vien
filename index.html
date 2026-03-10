@@ -36,9 +36,9 @@ header h1 { font-size: clamp(1.4rem,3.5vw,2.1rem); font-weight: 900; color: var(
 #energy-fill { height: 100%; width: 0%; border-radius: 99px; background: linear-gradient(90deg,#22c55e,#7eb8f7); transition: width .55s cubic-bezier(.4,0,.2,1), background .4s; position: relative; }
 #energy-fill::after { content: ''; position: absolute; top: 2px; left: 8px; right: 8px; height: 3px; background: rgba(255,255,255,0.2); border-radius: 99px; }
 
-#game { flex: 1; display: flex; gap: 8px; padding: 10px 8px 24px; max-width: 960px; margin: 0 auto; width: 100%; align-items: flex-start; }
-.col { flex: 1; display: flex; flex-direction: column; gap: 7px; min-width: 0; }
-.col-head { font-size: 0.72rem; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); text-align: center; padding: 5px 0 8px; border-bottom: 1px solid #2a3158; margin-bottom: 2px; }
+#game { flex: 1; display: flex; gap: 8px; padding: 10px 8px 24px; max-width: 960px; margin: 0 auto; width: 100%; align-items: stretch; }
+.col { flex: 1; display: flex; flex-direction: column; gap: 7px; min-width: 0; background: rgba(28,32,56,0.18); border-radius: 14px; padding: 8px 6px 12px; border: 1px solid rgba(42,49,88,0.5); }
+.col-head { font-size: 0.72rem; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); text-align: center; padding: 2px 0 8px; border-bottom: 1px solid rgba(42,49,88,0.8); margin-bottom: 4px; }
 
 .dcard { background: var(--card-bg); border: 1.5px solid var(--card-border); border-radius: 11px; padding: 10px 11px 9px; cursor: grab; user-select: none; -webkit-user-select: none; touch-action: none; max-height: 120px; transition: transform .15s, box-shadow .2s, border-color .2s, opacity 0.2s ease, max-height 0.35s ease 0.15s, padding 0.35s ease 0.15s, border-width 0.35s ease 0.15s; position: relative; overflow: hidden; }
 .dcard::before { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg,rgba(255,255,255,0.03) 0%,transparent 60%); pointer-events: none; }
@@ -49,8 +49,9 @@ header h1 { font-size: clamp(1.4rem,3.5vw,2.1rem); font-weight: 900; color: var(
 .dcard-icon { font-size: 1.15rem; }
 .dcard-name { font-size: 0.77rem; font-weight: 600; color: var(--text); margin-top: 4px; line-height: 1.35; }
 
-#center { flex: 0 0 178px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
-#dropzone { width: 160px; height: 244px; border-radius: 22px; border: 2px dashed #2a3158; background: rgba(28,32,56,0.5); display: flex; align-items: center; justify-content: center; position: relative; transition: border-color .25s, background .25s, transform .2s; }
+#center { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 10px; min-width: 0; background: rgba(28,32,56,0.18); border-radius: 14px; padding: 8px 6px 12px; border: 1px solid rgba(42,49,88,0.5); }
+#col-bottom { display: flex; flex-direction: column; gap: 7px; width: 100%; margin-top: 2px; }
+#dropzone { width: 100%; max-width: 200px; height: 244px; border-radius: 22px; border: 2px dashed #2a3158; background: rgba(28,32,56,0.5); display: flex; align-items: center; justify-content: center; position: relative; transition: border-color .25s, background .25s, transform .2s; }
 #dropzone.over { border-color: var(--accent2); background: rgba(126,184,247,0.07); transform: scale(1.03); }
 
 #char-wrap { display: flex; flex-direction: column; align-items: center; gap: 7px; }
@@ -107,7 +108,7 @@ header h1 { font-size: clamp(1.4rem,3.5vw,2.1rem); font-weight: 900; color: var(
 .shake { animation: shake .4s ease; }
 
 @media(max-width:560px){
-  #center{flex:0 0 136px} #dropzone{width:122px;height:196px} .char-svg{width:78px;height:106px}
+  #center{flex:1} #dropzone{width:100%;max-width:160px;height:196px} .char-svg{width:78px;height:106px}
   .dcard-name{font-size:0.7rem} .dcard{padding:8px 9px} #char-badge{font-size:0.6rem;padding:3px 8px}
 }
 </style>
@@ -496,6 +497,7 @@ header h1 { font-size: clamp(1.4rem,3.5vw,2.1rem); font-weight: 900; color: var(
       </div>
     </div>
     <div id="prog-hint">Còn lại: <span id="s-remain">0</span> yếu tố</div>
+    <div id="col-bottom"><div class="col-head">Yếu Tố</div></div>
   </div>
 
   <div class="col" id="col-right"><div class="col-head">Yếu Tố</div></div>
@@ -576,13 +578,18 @@ let currentLvlIdx=0;
 function init(){
   energy=0; goodDone=0; badDone=0; currentLvlIdx=0;
   document.getElementById('win').classList.remove('show');
-  document.getElementById('col-left').innerHTML  = '<div class="col-head">Yếu Tố</div>';
-  document.getElementById('col-right').innerHTML = '<div class="col-head">Yếu Tố</div>';
+  document.getElementById('col-left').innerHTML   = '<div class="col-head">Yếu Tố</div>';
+  document.getElementById('col-right').innerHTML  = '<div class="col-head">Yếu Tố</div>';
+  document.getElementById('col-bottom').innerHTML = '<div class="col-head">Yếu Tố</div>';
   document.querySelectorAll('.char-svg').forEach(s=>s.classList.remove('active','glow-good','glow-bad','level-pop'));
   document.getElementById('char-0').classList.add('active');
   const shuffle=a=>[...a].sort(()=>Math.random()-.5);
   const all=shuffle([...GOOD.map(c=>({...c,type:'good'})),...BAD.map(c=>({...c,type:'bad'}))]);
-  all.forEach((c,i)=>makeCard(c,i%2===0?'col-left':'col-right'));
+  // Phân bổ: 8 thẻ trái, 8 thẻ phải, 4 thẻ giữa
+  all.forEach((c,i)=>{
+    const col = i < 8 ? 'col-left' : i < 16 ? 'col-right' : 'col-bottom';
+    makeCard(c, col);
+  });
   updateHUD(); updateChar(false);
 }
 
