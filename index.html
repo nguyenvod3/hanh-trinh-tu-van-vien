@@ -40,12 +40,12 @@ header h1 { font-size: clamp(1.4rem,3.5vw,2.1rem); font-weight: 900; color: var(
 .col { flex: 1; display: flex; flex-direction: column; gap: 7px; min-width: 0; }
 .col-head { font-size: 0.72rem; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); text-align: center; padding: 5px 0 8px; border-bottom: 1px solid #2a3158; margin-bottom: 2px; }
 
-.dcard { background: var(--card-bg); border: 1.5px solid var(--card-border); border-radius: 11px; padding: 10px 11px 9px; cursor: grab; user-select: none; transition: transform .15s, box-shadow .2s, border-color .2s, opacity .3s; position: relative; overflow: hidden; }
+.dcard { background: var(--card-bg); border: 1.5px solid var(--card-border); border-radius: 11px; padding: 10px 11px 9px; cursor: grab; user-select: none; -webkit-user-select: none; touch-action: none; max-height: 120px; transition: transform .15s, box-shadow .2s, border-color .2s, opacity 0.2s ease, max-height 0.35s ease 0.15s, padding 0.35s ease 0.15s, border-width 0.35s ease 0.15s; position: relative; overflow: hidden; }
 .dcard::before { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg,rgba(255,255,255,0.03) 0%,transparent 60%); pointer-events: none; }
 .dcard:hover:not(.used) { transform: translateY(-2px); border-color: #3d4a70; box-shadow: 0 6px 20px rgba(0,0,0,0.4); }
 .dcard:active:not(.used) { cursor: grabbing; }
 .dcard.dragging { opacity: 0.3; transform: scale(0.94); }
-.dcard.used { opacity: 0.16; pointer-events: none; }
+.dcard.used { opacity: 0; pointer-events: none; max-height: 0 !important; padding-top: 0 !important; padding-bottom: 0 !important; border-top-width: 0 !important; border-bottom-width: 0 !important; overflow: hidden; transition: opacity 0.2s ease, max-height 0.35s ease 0.15s, padding 0.35s ease 0.15s, border-width 0.35s ease 0.15s; }
 .dcard-icon { font-size: 1.15rem; }
 .dcard-name { font-size: 0.77rem; font-weight: 600; color: var(--text); margin-top: 4px; line-height: 1.35; }
 
@@ -659,6 +659,11 @@ function showToast(type,val,label){ const t=document.getElementById('toast'); do
 function spawn(x,y,e){ const p=document.createElement('div'); p.className='pt'; p.textContent=e; p.style.left=(x+(Math.random()-.5)*44)+'px'; p.style.top=(y+(Math.random()-.5)*22)+'px'; document.body.appendChild(p); setTimeout(()=>p.remove(),1050); }
 function updateHUD(){ const pct=Math.round(energy/MAX_E*100); const fill=document.getElementById('energy-fill'); fill.style.width=pct+'%'; fill.style.background=energy<25?'linear-gradient(90deg,#ef4444,#f97316)':energy<55?'linear-gradient(90deg,#f0c060,#22c55e)':'linear-gradient(90deg,#22c55e,#7eb8f7)'; document.getElementById('s-score').textContent=goodDone-badDone; document.getElementById('s-good').textContent=goodDone; document.getElementById('s-bad').textContent=badDone; document.getElementById('s-remain').textContent=totalGood-goodDone; }
 function showWin(){ const score=goodDone-badDone; const verdict=score>=8?'🏆 Đạt danh hiệu MDRT!':score>=5?'💎 GenLion Kim Cương':score>=2?'🥇 GenLion Vàng':'💡 Cần Cải Thiện Thêm'; document.getElementById('win-score').textContent=score+' điểm'; document.getElementById('win-verdict').textContent=verdict; document.getElementById('win-meta').innerHTML=`Yếu tố hỗ trợ: <b>${goodDone}</b> &nbsp;|&nbsp; Thử thách gặp: <b>${badDone}</b><br>Năng lượng cuối: <b>${Math.round(energy/MAX_E*100)}%</b>`; document.getElementById('win').classList.add('show'); for(let i=0;i<20;i++) setTimeout(()=>spawn(innerWidth*Math.random(),innerHeight*.25+Math.random()*260,['🎉','🌟','✨','🏅','🎊','💫','🦁'][Math.floor(Math.random()*7)]),i*65); }
+
+// ─── SAFARI iOS: chặn scroll toàn trang khi đang kéo thẻ ────
+document.addEventListener('touchmove', function(e) {
+  if (dragged) e.preventDefault();
+}, { passive: false });
 
 init();
 </script>
